@@ -1,17 +1,15 @@
 public  class ExternalSystemService {
 
-    private String webServiceURL;
+    private static String webServiceURL = 'https://th-apex-http-callout.herokuapp.com/animals';
 
-    public ExternalSystemService(){
-        this.webServiceURL = 'https://th-apex-http-callout.herokuapp.com/animals';
-    }
-
-    public void registerAttendees(Case r){
+    @future(callout=true)
+    public static void registerAttendees(String caseId){
+        Case r = [select AccountId from Case where ID=:caseId limit 1];
             for(Account a : [SELECT id FROM Account where id = :r.AccountId]){
-                for(Contact c : [SELECT id,name, email FROM Contact where accountid =: a.id ]){
-                    Http http = new Http();
+                for(Contact c : [SELECT id,name, email, AccountId FROM Contact where accountid =: a.id ]){
+                     Http http = new Http();
                     HttpRequest request = new HttpRequest();
-                    request.setEndpoint(this.webServiceURL);
+                        request.setEndpoint(ExternalSystemService.webServiceURL);
                     request.setMethod('POST');
                     request.setHeader('Content-Type', 'application/json;charset=UTF-8');
                     // Set the body as a JSON object
@@ -20,23 +18,23 @@ public  class ExternalSystemService {
                     // Parse the JSON response
                     if (response.getStatusCode() != 201) {
                         System.debug('The status code returned was not expected: ' +
-                            response.getStatusCode() + ' ' + response.getStatus());
+                        response.getStatusCode() + ' ' + response.getStatus());
                     } else {
                        // Everything went as expected.
-                       notifyAttendeeByEmail(c);
+                       ExternalSystemService.notifyAttendeeByEmail(c);
                     }
                 }
             
         }
     } 
 
-    public void notifyAttendeeByEmail(Contact account){
+    public static void notifyAttendeeByEmail(Contact contact){
       
         Task tk = new Task();
-        tk.Subject = 'Send Email To' + account.name;
+        tk.Subject = 'Send Email To' + contact.name;
         tk.Status = 'Open';
         tk.Priority = 'Normal';
-        tk.WhatId = account.ID;
+        tk.WhatId = contact.AccountId;
         insert tk;
     } 
 
